@@ -148,7 +148,7 @@ public abstract class RadiusProxy extends RadiusServer {
 		RadiusEndpoint radiusServer = getProxyServer(request, radiusClient);
 		if (radiusServer != null) {
 			// proxy incoming packet to other radius server
-			RadiusProxyConnection proxyConnection = new RadiusProxyConnection(radiusServer, radiusClient, request, localAddress.getPort());
+			final RadiusProxyConnection proxyConnection = new RadiusProxyConnection(radiusServer, radiusClient, request, localAddress.getPort());
 			logger.info("proxy packet to " + proxyConnection);
 			proxyPacket(request, proxyConnection);
 			return null;
@@ -170,21 +170,21 @@ public abstract class RadiusProxy extends RadiusServer {
 	 */
 	protected void proxyPacketReceived(RadiusPacket packet, InetSocketAddress remote) throws IOException, RadiusException {
 		// retrieve my Proxy-State attribute (the last)
-		List proxyStates = packet.getAttributes(33);
+		final List proxyStates = packet.getAttributes(33);
 		if (proxyStates == null || proxyStates.size() == 0)
 			throw new RadiusException("proxy packet without Proxy-State attribute");
-		RadiusAttribute proxyState = (RadiusAttribute) proxyStates.get(proxyStates.size() - 1);
+		final RadiusAttribute proxyState = (RadiusAttribute) proxyStates.get(proxyStates.size() - 1);
 
 		// retrieve proxy connection from cache
-		String state = new String(proxyState.getAttributeData());
-		RadiusProxyConnection proxyConnection = (RadiusProxyConnection) proxyConnections.remove(state);
+		final String state = new String(proxyState.getAttributeData());
+		final RadiusProxyConnection proxyConnection = (RadiusProxyConnection) proxyConnections.remove(state);
 		if (proxyConnection == null) {
 			logger.warn("received packet on proxy port without saved proxy connection - duplicate?");
 			return;
 		}
 
 		// retrieve client
-		RadiusEndpoint client = proxyConnection.getRadiusClient();
+		final RadiusEndpoint client = proxyConnection.getRadiusClient();
 		if (logger.isInfoEnabled()) {
 			logger.info("received proxy packet: " + packet);
 			logger.info("forward packet to " + client.getEndpointAddress().toString() + " with secret " + client.getSharedSecret());
@@ -194,12 +194,12 @@ public abstract class RadiusProxy extends RadiusServer {
 		packet.removeLastAttribute(33);
 
 		// re-encode answer packet with authenticator of the original packet
-		RadiusPacket answer = new RadiusPacket(packet.getPacketType(), packet.getPacketIdentifier(), packet.getAttributes());
-		DatagramPacket datagram = makeDatagramPacket(answer, client.getSharedSecret(), client.getEndpointAddress().getAddress(), client
+		final RadiusPacket answer = new RadiusPacket(packet.getPacketType(), packet.getPacketIdentifier(), packet.getAttributes());
+		final DatagramPacket datagram = makeDatagramPacket(answer, client.getSharedSecret(), client.getEndpointAddress().getAddress(), client
 		        .getEndpointAddress().getPort(), proxyConnection.getPacket());
 
 		// send back using correct socket
-		DatagramSocket socket;
+		final DatagramSocket socket;
 		if (proxyConnection.getPort() == getAuthPort())
 			socket = getAuthSocket();
 		else
@@ -222,7 +222,7 @@ public abstract class RadiusProxy extends RadiusServer {
 		synchronized (RadiusProxy.class) {
 			// add Proxy-State attribute
 			proxyIndex++;
-			String proxyIndexStr = Integer.toString(proxyIndex);
+			final String proxyIndexStr = Integer.toString(proxyIndex);
 			packet.addAttribute(new RadiusAttribute(33, proxyIndexStr.getBytes()));
 
 			// store RadiusProxyConnection object
@@ -230,24 +230,24 @@ public abstract class RadiusProxy extends RadiusServer {
 		}
 
 		// get server address
-		InetAddress serverAddress = proxyConnection.getRadiusServer().getEndpointAddress().getAddress();
-		int serverPort = proxyConnection.getRadiusServer().getEndpointAddress().getPort();
-		String serverSecret = proxyConnection.getRadiusServer().getSharedSecret();
+		final InetAddress serverAddress = proxyConnection.getRadiusServer().getEndpointAddress().getAddress();
+		final int serverPort = proxyConnection.getRadiusServer().getEndpointAddress().getPort();
+		final String serverSecret = proxyConnection.getRadiusServer().getSharedSecret();
 
 		// save request authenticator (will be calculated new)
 		byte[] auth = packet.getAuthenticator();
 
 		// encode new packet (with new authenticator)
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		final ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		packet.encodeRequestPacket(bos, serverSecret);
-		byte[] data = bos.toByteArray();
-		DatagramPacket datagram = new DatagramPacket(data, data.length, serverAddress, serverPort);
+		final byte[] data = bos.toByteArray();
+		final DatagramPacket datagram = new DatagramPacket(data, data.length, serverAddress, serverPort);
 
 		// restore original authenticator
 		packet.setAuthenticator(auth);
 
 		// send packet
-		DatagramSocket proxySocket = getProxySocket();
+		final DatagramSocket proxySocket = getProxySocket();
 		proxySocket.send(datagram);
 	}
 
